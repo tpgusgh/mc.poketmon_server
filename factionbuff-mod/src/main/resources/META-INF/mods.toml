@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
     modId="factionbuff"
-    version="1.2.0"
+    version="1.2.1"
     displayName="Faction Buff"
     authors="mieung.kr"
     description='''

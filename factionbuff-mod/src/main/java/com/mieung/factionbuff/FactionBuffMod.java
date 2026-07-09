@@ -2,7 +2,10 @@ package com.mieung.factionbuff;
 
 import com.pixelmonmod.pixelmon.api.events.ExperienceGainEvent;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.util.text.IFormattableTextComponent;
 import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.ServerChatEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -30,6 +33,15 @@ import java.util.Map;
  *    recolors their chat messages with a "[진영이름] " prefix in that
  *    faction's color, name+message in white.
  *
+ * Note on method names: this project has no ForgeGradle/MCP mapping setup,
+ * so it's compiled directly against the server's own SRG-named runtime jar
+ * (libraries/net/minecraft/server/.../server-*-srg.jar). Any vanilla method
+ * beyond simple/likely-unobfuscated ones must be called by its real SRG name
+ * (funcXXXXX_x), verified ahead of time by extracting real call sites from
+ * Pixelmon/FTB Essentials' own compiled bytecode (never guessed from MCP-era
+ * naming conventions -- a prior guess here crashed the whole server the
+ * first time a player chatted).
+ *
  * Server-side only -- clients don't need this mod to join.
  */
 @Mod("factionbuff")
@@ -41,7 +53,7 @@ public class FactionBuffMod {
             Paths.get("/home/hyunho/player-status-api/player_factions.txt");
 
     private static final Map<String, String> FACTION_DISPLAY_NAME = new HashMap<>();
-    private static final Map<String, String> FACTION_COLOR = new HashMap<>();
+    private static final Map<String, TextFormatting> FACTION_COLOR = new HashMap<>();
 
     static {
         FACTION_DISPLAY_NAME.put("valor", "발로");
@@ -49,10 +61,10 @@ public class FactionBuffMod {
         FACTION_DISPLAY_NAME.put("instinct", "인스팅트");
         FACTION_DISPLAY_NAME.put("harmony", "하모니");
 
-        FACTION_COLOR.put("valor", "red");
-        FACTION_COLOR.put("mystic", "blue");
-        FACTION_COLOR.put("instinct", "yellow");
-        FACTION_COLOR.put("harmony", "light_purple");
+        FACTION_COLOR.put("valor", TextFormatting.RED);
+        FACTION_COLOR.put("mystic", TextFormatting.BLUE);
+        FACTION_COLOR.put("instinct", TextFormatting.YELLOW);
+        FACTION_COLOR.put("harmony", TextFormatting.LIGHT_PURPLE);
     }
 
     public FactionBuffMod() {
@@ -70,7 +82,9 @@ public class FactionBuffMod {
         if (owner == null) {
             return;
         }
-        float multiplier = getMultiplier(owner.getGameProfile().getName());
+        // func_146103_bH() is PlayerEntity's real (SRG) no-arg GameProfile
+        // getter -- confirmed via Pixelmon's own compiled call sites.
+        float multiplier = getMultiplier(owner.func_146103_bH().getName());
         if (multiplier != 1.0f) {
             event.setExperience(Math.round(event.getExperience() * multiplier));
         }
@@ -83,20 +97,18 @@ public class FactionBuffMod {
             return;
         }
         String factionName = FACTION_DISPLAY_NAME.getOrDefault(faction, faction);
-        String color = FACTION_COLOR.getOrDefault(faction, "white");
+        TextFormatting color = FACTION_COLOR.getOrDefault(faction, TextFormatting.WHITE);
 
-        String json = "{\"text\":\"[" + escapeJson(factionName) + "] \",\"color\":\"" + color + "\","
-                + "\"extra\":[{\"text\":\"" + escapeJson(event.getUsername()) + ": "
-                + escapeJson(event.getMessage()) + "\",\"color\":\"white\"}]}";
+        // func_240699_a_ = mergeStyle(TextFormatting), func_230529_a_ = append(ITextComponent).
+        // Both verified against the real SRG-named IFormattableTextComponent
+        // interface and against FTB Essentials' own compiled usage of them.
+        IFormattableTextComponent prefix = new StringTextComponent("[" + factionName + "] ")
+                .func_240699_a_(color);
+        IFormattableTextComponent body = new StringTextComponent(event.getUsername() + ": " + event.getMessage())
+                .func_240699_a_(TextFormatting.WHITE);
+        ITextComponent component = prefix.func_230529_a_(body);
 
-        ITextComponent component = ITextComponent.Serializer.fromJson(json);
-        if (component != null) {
-            event.setComponent(component);
-        }
-    }
-
-    private static String escapeJson(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+        event.setComponent(component);
     }
 
     private float getMultiplier(String playerName) {
