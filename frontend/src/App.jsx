@@ -54,6 +54,18 @@ function formatDuration(h) {
   return `${minutes}분`
 }
 
+function PokeballLogo() {
+  return (
+    <svg className="pokeball-logo" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="29" fill="#fff" stroke="#1a1a1a" strokeWidth="3.5" />
+      <path d="M3 32a29 29 0 0 1 58 0z" fill="#ee1515" stroke="#1a1a1a" strokeWidth="3.5" />
+      <rect x="3" y="29" width="58" height="6" fill="#1a1a1a" />
+      <circle cx="32" cy="32" r="9" fill="#fff" stroke="#1a1a1a" strokeWidth="4" />
+      <circle cx="32" cy="32" r="4" fill="#fff" stroke="#1a1a1a" strokeWidth="2" />
+    </svg>
+  )
+}
+
 function HpBar({ hp, maxHp, fainted }) {
   const ratio = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0
   const level = fainted ? 'fainted' : ratio > 0.5 ? 'good' : ratio > 0.2 ? 'warning' : 'critical'
@@ -196,7 +208,10 @@ export default function App() {
   return (
     <div className="page">
       <header className="header">
-        <h1>포켓몬 서버 접속 현황</h1>
+        <div className="brand">
+          <PokeballLogo />
+          <h1>포켓몬 서버 접속 현황</h1>
+        </div>
         <div className="header-right">
           <div className={`server-status ${data?.server_online ? 'badge-good' : 'badge-critical'}`}>
             <span className="dot" aria-hidden="true" />

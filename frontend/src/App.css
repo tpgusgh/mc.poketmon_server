@@ -7,6 +7,9 @@
   --border: rgba(11, 11, 11, 0.1);
   --good: #0ca30c;
   --critical: #d03b3b;
+  --poke-blue: #2a75bb;
+  --poke-yellow: #ffcb05;
+  --poke-red: #ee1515;
 
   min-height: 100vh;
   background: var(--page-plane);
@@ -26,7 +29,16 @@
     --border: rgba(255, 255, 255, 0.1);
     --good: #0ca30c;
     --critical: #d03b3b;
+    --poke-blue: #5b9bd8;
+    --poke-yellow: #ffcb05;
+    --poke-red: #ff4b4b;
   }
+}
+
+.page h1,
+.page h2,
+.page h3 {
+  font-family: "Baloo 2", system-ui, sans-serif;
 }
 
 .header {
@@ -37,12 +49,29 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 4px solid var(--poke-yellow);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pokeball-logo {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
 .header h1 {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 800;
   margin: 0;
+  color: var(--poke-blue);
+  letter-spacing: 0.2px;
 }
 
 .header-right {
@@ -837,9 +866,9 @@
 .btn {
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 8px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
   border: 1px solid var(--border);
   cursor: pointer;
   background: var(--surface-1);
@@ -847,9 +876,9 @@
 }
 
 .btn-primary {
-  color: var(--good);
-  border-color: color-mix(in srgb, var(--good) 40%, var(--border));
-  background: color-mix(in srgb, var(--good) 12%, var(--surface-1));
+  color: #fff;
+  border-color: var(--poke-blue);
+  background: var(--poke-blue);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
