@@ -1,0 +1,34 @@
+modLoader="javafml"
+loaderVersion="[36,)"
+license="MIT"
+
+[[mods]]
+    modId="factionbuff"
+    version="1.1.0"
+    displayName="Faction Buff"
+    authors="mieung.kr"
+    description='''
+    Multiplies battle EXP for players whose faction (Valor/Mystic/Instinct,
+    picked on the website) is currently ranked #1 (1.5x) or #2 (1.2x) on the
+    faction leaderboard. Reads per-player multipliers from
+    /home/hyunho/player-status-api/faction_boosted_players.txt.
+    '''
+
+[[dependencies.factionbuff]]
+    modId="forge"
+    mandatory=true
+    versionRange="[36,)"
+    ordering="NONE"
+    side="SERVER"
+[[dependencies.factionbuff]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16.5,1.17)"
+    ordering="NONE"
+    side="SERVER"
+[[dependencies.factionbuff]]
+    modId="pixelmon"
+    mandatory=true
+    versionRange="[9.0.0,)"
+    ordering="AFTER"
+    side="SERVER"
