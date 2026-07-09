@@ -1047,13 +1047,15 @@
 .story h2 {
   display: inline-flex;
   align-items: center;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
   padding-left: 12px;
-  border-left: 5px solid var(--poke-blue);
+  border-left: 5px solid var(--section-color, var(--poke-blue));
 }
 
 .btn {
+  font-size: 14px;
+  padding: 8px 16px;
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12);
   transition: transform 0.05s ease, box-shadow 0.05s ease;
 }
@@ -1069,4 +1071,42 @@
 
 .btn-primary:active {
   box-shadow: none;
+}
+
+/* --- Simple, colorful, kid-friendly section blocks --- */
+
+.leaderboard,
+.legendaries,
+.faction-section,
+.battle,
+.story {
+  border: 3px solid var(--section-color, var(--border));
+  border-radius: 26px;
+  padding: 22px 24px;
+  background: color-mix(in srgb, var(--section-color, var(--surface-1)) 7%, var(--surface-1));
+}
+
+.leaderboard {
+  --section-color: var(--poke-yellow);
+}
+
+.legendaries {
+  --section-color: #3fa34d;
+}
+
+.faction-section {
+  --section-color: #a259d9;
+}
+
+.battle {
+  --section-color: var(--poke-red);
+}
+
+.story {
+  --section-color: var(--poke-blue);
+}
+
+.guide-card,
+.card {
+  border-width: 2px;
 }

@@ -299,17 +299,17 @@ function NotificationBell({ me }) {
     return () => clearInterval(id)
   }, [load])
 
-  const toggle = async () => {
-    const next = !open
-    setOpen(next)
-    if (next && data.resolved_unseen.length > 0) {
-      await apiPost('/battle/notifications/ack', {})
-      load()
-    }
+  const toggle = () => {
+    setOpen((v) => !v)
   }
 
   const respond = async (challengeId, accept) => {
     await apiPost('/battle/respond', { challenge_id: challengeId, accept })
+    load()
+  }
+
+  const ack = async () => {
+    await apiPost('/battle/notifications/ack', {})
     load()
   }
 
@@ -351,6 +351,13 @@ function NotificationBell({ me }) {
                 </div>
               )
             })}
+            {data.resolved_unseen.length > 0 && (
+              <div className="battle-actions">
+                <button className="btn btn-secondary" onClick={ack}>
+                  확인했습니다
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
