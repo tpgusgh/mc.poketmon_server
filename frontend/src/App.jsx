@@ -108,6 +108,7 @@ function PlayerCard({ player }) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || '')
   const [me, checked, refreshMe] = useMe()
   const [data, setData] = useState(null)
   const [leaderboard, setLeaderboard] = useState(null)
@@ -169,6 +170,20 @@ export default function App() {
   }, [load])
 
   useEffect(() => {
+    if (theme) localStorage.setItem('theme', theme)
+    else localStorage.removeItem('theme')
+  }, [theme])
+
+  const toggleTheme = () => {
+    setTheme((t) => {
+      if (t === 'dark') return 'light'
+      if (t === 'light') return 'dark'
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      return prefersDark ? 'light' : 'dark'
+    })
+  }
+
+  useEffect(() => {
     setVisibleDayCount(STORY_PAGE_SIZE)
   }, [selectedDate])
 
@@ -205,8 +220,10 @@ export default function App() {
           valueText: `${r.value}${DASHBOARD_UNIT[dashboardType] ?? ''}`,
         }))
 
+  const effectiveTheme = theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+
   return (
-    <div className="page">
+    <div className="page" data-theme={theme || undefined}>
       <header className="header">
         <div className="brand">
           <PokeballLogo />
@@ -217,6 +234,14 @@ export default function App() {
             <span className="dot" aria-hidden="true" />
             {data ? (data.server_online ? '서버 가동 중' : '서버 꺼짐') : '불러오는 중...'}
           </div>
+          <button
+            className="btn btn-secondary theme-toggle-btn"
+            onClick={toggleTheme}
+            aria-label="라이트/다크 모드 전환"
+            title="라이트/다크 모드 전환"
+          >
+            {effectiveTheme === 'dark' ? '☀️' : '🌙'}
+          </button>
           <GuideButton />
           <ContactButton me={me} />
           <AuthHeaderWidget me={me} checked={checked} refreshMe={refreshMe} />
