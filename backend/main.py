@@ -129,6 +129,9 @@ def _fetch_journal_lines(since: datetime | None = None) -> list[str]:
     return lines
 
 
+RECONNECT_GRACE_SECONDS = 600
+
+
 def get_player_status():
     lines = _fetch_journal_lines()
 
@@ -153,8 +156,18 @@ def get_player_status():
         if m:
             name = m.group(1)
             state.setdefault(name, {"online": False, "since": None, "last_seen": None})
-            state[name]["online"] = True
-            state[name]["since"] = ts
+            info = state[name]
+            # A quick reconnect (server restart, brief network blip) within
+            # the grace window continues the same displayed session instead
+            # of resetting "connected since" back to right now.
+            is_quick_reconnect = (
+                info["last_seen"] is not None
+                and info["since"] is not None
+                and (ts - info["last_seen"]).total_seconds() <= RECONNECT_GRACE_SECONDS
+            )
+            info["online"] = True
+            if not is_quick_reconnect:
+                info["since"] = ts
             continue
 
         m = LEFT_RE.search(line) or LOST_RE.search(line)
