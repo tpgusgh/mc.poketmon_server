@@ -17,6 +17,7 @@ import battles
 import contact
 import factions
 import rcon
+import welcome_gift
 
 app = FastAPI(title="Pixelmon Server1 Player Status")
 
@@ -922,9 +923,12 @@ def root():
 
 @app.get("/players")
 def players():
+    player_list = get_player_status()
+    online_names = {p["name"] for p in player_list if p["status"] == "online"}
+    welcome_gift.check_and_welcome(online_names)
     return {
         "server_online": get_server_active(),
-        "players": get_player_status(),
+        "players": player_list,
     }
 
 
