@@ -4,14 +4,16 @@ license="MIT"
 
 [[mods]]
     modId="factionbuff"
-    version="1.1.0"
+    version="1.2.0"
     displayName="Faction Buff"
     authors="mieung.kr"
     description='''
-    Multiplies battle EXP for players whose faction (Valor/Mystic/Instinct,
+    Multiplies battle EXP for players whose faction (Valor/Mystic/Instinct/Harmony,
     picked on the website) is currently ranked #1 (1.5x) or #2 (1.2x) on the
-    faction leaderboard. Reads per-player multipliers from
-    /home/hyunho/player-status-api/faction_boosted_players.txt.
+    faction leaderboard. Also recolors chat messages with a "[진영이름] " prefix
+    in that faction's color. Reads per-player data from
+    /home/hyunho/player-status-api/faction_boosted_players.txt and
+    /home/hyunho/player-status-api/player_factions.txt.
     '''
 
 [[dependencies.factionbuff]]

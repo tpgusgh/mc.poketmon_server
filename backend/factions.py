@@ -20,6 +20,7 @@ import battles
 router = APIRouter()
 
 BOOSTED_PLAYERS_FILE = Path("/home/hyunho/player-status-api/faction_boosted_players.txt")
+PLAYER_FACTIONS_FILE = Path("/home/hyunho/player-status-api/player_factions.txt")
 
 # rank index (0 = 1st place) -> EXP multiplier for that faction's members
 TIER_MULTIPLIERS = {0: 1.5, 1: 1.2}
@@ -64,10 +65,18 @@ def _write_boosted_players(boosted: list[dict]) -> None:
     BOOSTED_PLAYERS_FILE.write_text("\n".join(lines) + ("\n" if lines else ""))
 
 
+def _write_player_factions() -> None:
+    """name:faction per line, for the mod's chat coloring (every player with
+    a chosen faction, not just the boosted ones)."""
+    members = auth.list_accounts_with_faction()
+    lines = [f"{m['name']}:{m['faction']}" for m in members]
+    PLAYER_FACTIONS_FILE.write_text("\n".join(lines) + ("\n" if lines else ""))
+
+
 def get_faction_ranking_and_sync() -> tuple[list[dict], list[dict]]:
-    """Computes the ranking and (re)writes the boosted-players file the Forge
-    mod reads -- called on every /factions/ranking request so the in-game
-    buff always matches the current standings, no restart needed."""
+    """Computes the ranking and (re)writes the boosted-players + player-faction
+    files the Forge mod reads -- called on every /factions/ranking request so
+    the in-game buff/chat colors always match current data, no restart needed."""
     ranking = get_faction_ranking()
     boosted = [
         {"faction": ranking[rank]["faction"], "multiplier": multiplier}
@@ -75,6 +84,7 @@ def get_faction_ranking_and_sync() -> tuple[list[dict], list[dict]]:
         if rank < len(ranking)
     ]
     _write_boosted_players(boosted)
+    _write_player_factions()
     return ranking, boosted
 
 
