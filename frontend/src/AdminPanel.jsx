@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiGet, apiPost } from './Auth'
+import { apiGet, apiPost, FACTIONS } from './Auth'
 import { AdminAnnounce, AdminInquiries } from './Contact'
 import { AdminPlayerdataBackups } from './Backups'
 
@@ -64,20 +64,73 @@ function AdminAccountDisputes({ disputes, onResolve }) {
   )
 }
 
+function AdminForceFaction({ players, onChange }) {
+  const [selected, setSelected] = useState({})
+
+  if (players.length === 0) return null
+
+  return (
+    <div className="battle-block admin-block">
+      <h3>🚩 플레이어 진영 강제 변경</h3>
+      <ul className="battle-list">
+        {players.map((p) => {
+          const current = FACTIONS.find((f) => f.faction === p.faction)
+          const pick = selected[p.uuid] ?? p.faction
+          return (
+            <li key={p.uuid} className="battle-row">
+              <span>
+                <strong>{p.name}</strong>
+                {current && (
+                  <span className="faction-badge" style={{ '--faction-color': current.color, marginLeft: 8 }}>
+                    {current.name}
+                  </span>
+                )}
+              </span>
+              <div className="battle-actions">
+                <select
+                  className="date-select"
+                  value={pick}
+                  onChange={(e) => setSelected((s) => ({ ...s, [p.uuid]: e.target.value }))}
+                >
+                  {FACTIONS.map((f) => (
+                    <option key={f.faction} value={f.faction}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn-secondary"
+                  disabled={pick === p.faction}
+                  onClick={() => onChange(p.uuid, pick)}
+                >
+                  변경
+                </button>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 export default function AdminPanelButton({ me }) {
   const [open, setOpen] = useState(false)
   const [disputes, setDisputes] = useState([])
   const [accountDisputes, setAccountDisputes] = useState([])
+  const [factionPlayers, setFactionPlayers] = useState([])
   const [error, setError] = useState(null)
 
   const load = useCallback(async () => {
     try {
-      const [disputesRes, accountDisputesRes] = await Promise.all([
+      const [disputesRes, accountDisputesRes, factionPlayersRes] = await Promise.all([
         apiGet('/admin/disputes'),
         apiGet('/admin/account-disputes'),
+        apiGet('/admin/players-factions'),
       ])
       if (disputesRes.ok) setDisputes((await disputesRes.json()).disputes)
       if (accountDisputesRes.ok) setAccountDisputes((await accountDisputesRes.json()).disputes)
+      if (factionPlayersRes.ok) setFactionPlayers((await factionPlayersRes.json()).players)
     } catch (e) {
       setError(e.message)
     }
@@ -115,6 +168,9 @@ export default function AdminPanelButton({ me }) {
   const handleAdminResolveAccountDispute = (disputeId, action) =>
     runAction(() => apiPost('/admin/account-disputes/resolve', { dispute_id: disputeId, action }))
 
+  const handleForceFaction = (playerUuid, faction) =>
+    runAction(() => apiPost('/admin/set-player-faction', { player_uuid: playerUuid, faction }))
+
   if (!me?.is_admin) return null
 
   return (
@@ -134,6 +190,7 @@ export default function AdminPanelButton({ me }) {
             {error && <div className="error-banner">{error}</div>}
             <AdminDisputes disputes={disputes} onResolve={handleAdminResolve} />
             <AdminAccountDisputes disputes={accountDisputes} onResolve={handleAdminResolveAccountDispute} />
+            <AdminForceFaction players={factionPlayers} onChange={handleForceFaction} />
             <AdminAnnounce />
             <AdminInquiries />
             <AdminPlayerdataBackups />

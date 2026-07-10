@@ -447,6 +447,36 @@ def _require_admin(session: str | None) -> dict:
     return player
 
 
+@router.get("/admin/players-factions")
+def admin_players_factions(session: str | None = Cookie(default=None)):
+    """All claimed players with their current faction, for the admin's
+    force-change-faction tool."""
+    _require_admin(session)
+    players = list_accounts_with_faction()
+    players.sort(key=lambda p: p["name"].lower())
+    return {"players": players}
+
+
+@router.post("/admin/set-player-faction")
+def admin_set_player_faction(payload: dict, session: str | None = Cookie(default=None)):
+    """Force-overrides a player's faction, bypassing the normal one-time-only
+    restriction. Admin-only."""
+    _require_admin(session)
+    player_uuid = payload.get("player_uuid")
+    faction = payload.get("faction")
+    if faction not in FACTIONS:
+        raise HTTPException(400, "올바른 진영을 선택해주세요")
+
+    accounts = _load_accounts()
+    account = _find_account(accounts, player_uuid=player_uuid)
+    if not account:
+        raise HTTPException(404, "해당 플레이어를 선택한 계정이 없습니다")
+
+    account["faction"] = faction
+    _save_accounts(accounts)
+    return {"uuid": player_uuid, "name": account["player_name"], "faction": faction}
+
+
 @router.get("/admin/account-disputes")
 def admin_account_disputes(session: str | None = Cookie(default=None)):
     _require_admin(session)
