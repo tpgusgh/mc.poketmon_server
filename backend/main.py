@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import random
@@ -18,8 +19,14 @@ import contact
 import factions
 import rcon
 import welcome_gift
+import zygarde_spawn
 
 app = FastAPI(title="Pixelmon Server1 Player Status")
+
+
+@app.on_event("startup")
+async def _start_background_tasks():
+    asyncio.create_task(zygarde_spawn.zygarde_spawn_loop())
 
 app.add_middleware(
     CORSMiddleware,
@@ -109,20 +116,34 @@ def _parse_line(line: str):
 # unbounded result briefly so a poll round (or several concurrent visitors) triggers at
 # most one subprocess call instead of one per endpoint.
 _JOURNAL_CACHE: dict = {"ts": 0.0, "lines": []}
-_JOURNAL_CACHE_TTL = 12  # seconds
+_JOURNAL_CACHE_TTL = 30  # seconds
+_JOURNAL_TIMEOUT = 60  # seconds -- the log is 100k+ lines deep by now and growing
 
 
 def _fetch_journal_lines(since: datetime | None = None) -> list[str]:
-    cmd = ["journalctl", "-u", "minecraft.service", "--no-pager", "-o", "short-iso"]
+    # Nothing before WORLD_EPOCH is ever used downstream (every caller filters
+    # it out), but without a --since bound journalctl scans the unit's entire
+    # retained history -- which by now includes ancient, unrelated log data
+    # from long before this project started -- and gets slower every day the
+    # server runs. Bounding the query at the source avoids that entirely.
+    effective_since = since if since is not None else WORLD_EPOCH
+    cmd = [
+        "journalctl", "-u", "minecraft.service", "--no-pager", "-o", "short-iso",
+        "--since", effective_since.strftime("%Y-%m-%d %H:%M:%S"),
+    ]
     if since is not None:
-        cmd += ["--since", since.strftime("%Y-%m-%d %H:%M:%S")]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=_JOURNAL_TIMEOUT)
         return result.stdout.splitlines()
 
     now = time.monotonic()
     if now - _JOURNAL_CACHE["ts"] < _JOURNAL_CACHE_TTL:
         return _JOURNAL_CACHE["lines"]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=_JOURNAL_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        # Degrade to the last known-good data instead of a 500 -- a slightly
+        # stale dashboard beats a broken one.
+        return _JOURNAL_CACHE["lines"]
     lines = result.stdout.splitlines()
     _JOURNAL_CACHE["ts"] = now
     _JOURNAL_CACHE["lines"] = lines

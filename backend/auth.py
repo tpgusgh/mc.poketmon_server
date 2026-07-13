@@ -205,6 +205,23 @@ def list_accounts_with_faction() -> list[dict]:
     ]
 
 
+def list_claimed_players_with_optional_faction() -> list[dict]:
+    """Every claimed account, faction included if set (else None) -- for the
+    admin's faction management tool, which needs to also set a faction for
+    players who haven't picked one yet."""
+    accounts = _load_accounts()
+    return [
+        {
+            "id": a["id"],
+            "uuid": a["player_uuid"],
+            "name": a["player_name"],
+            "faction": a["faction"] if a.get("faction") in FACTIONS else None,
+        }
+        for a in accounts["accounts"]
+        if a.get("player_uuid")
+    ]
+
+
 def list_claimed_players(exclude_uuid: str | None = None) -> list[dict]:
     """Every account that has claimed a Minecraft player, regardless of whether
     they're currently logged into the website (for the battle-challenge picker,
@@ -449,10 +466,11 @@ def _require_admin(session: str | None) -> dict:
 
 @router.get("/admin/players-factions")
 def admin_players_factions(session: str | None = Cookie(default=None)):
-    """All claimed players with their current faction, for the admin's
-    force-change-faction tool."""
+    """All claimed players, faction included if set (else null) -- for the
+    admin's force-change-faction tool, which also handles players who
+    haven't picked a faction yet."""
     _require_admin(session)
-    players = list_accounts_with_faction()
+    players = list_claimed_players_with_optional_faction()
     players.sort(key=lambda p: p["name"].lower())
     return {"players": players}
 

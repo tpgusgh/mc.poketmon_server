@@ -75,14 +75,18 @@ function AdminForceFaction({ players, onChange }) {
       <ul className="battle-list">
         {players.map((p) => {
           const current = FACTIONS.find((f) => f.faction === p.faction)
-          const pick = selected[p.uuid] ?? p.faction
+          const pick = selected[p.uuid] ?? p.faction ?? FACTIONS[0].faction
           return (
             <li key={p.uuid} className="battle-row">
               <span>
                 <strong>{p.name}</strong>
-                {current && (
+                {current ? (
                   <span className="faction-badge" style={{ '--faction-color': current.color, marginLeft: 8 }}>
                     {current.name}
+                  </span>
+                ) : (
+                  <span className="faction-badge" style={{ '--faction-color': '#999', marginLeft: 8 }}>
+                    미배정
                   </span>
                 )}
               </span>
