@@ -1,6 +1,9 @@
 package com.mieung.factionbuff;
 
+import com.pixelmonmod.pixelmon.api.battles.BattleResults;
 import com.pixelmonmod.pixelmon.api.events.ExperienceGainEvent;
+import com.pixelmonmod.pixelmon.api.events.npc.NPCEvent;
+import com.pixelmonmod.pixelmon.enums.EnumNPCType;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.util.text.IFormattableTextComponent;
 import net.minecraft.util.text.ITextComponent;
@@ -18,20 +21,26 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Two things, both driven by plain text files the website's API writes so
- * neither needs a server restart when faction standings/membership change:
+ * Three things:
  *
  * 1. Reads the per-player EXP multiplier (one "name:multiplier" line per
  *    boosted player, e.g. the #1 faction gets 1.5x and #2 gets 1.2x) and
- *    applies it on battle EXP gain.
+ *    applies it on battle EXP gain. Driven by a plain text file the
+ *    website's API writes, so no restart needed when standings change.
  * 2. Reads each player's chosen faction (one "name:factionKey" line) and
  *    recolors their chat messages with a "[진영이름] " prefix in that
- *    faction's color, name+message in white.
+ *    faction's color, name+message in white. Same file-driven pattern.
+ * 3. Appends "instant|playerName|npcName" to a log file every time a player
+ *    beats an NPC trainer -- the website reads this to show a "Champion
+ *    Hall of Fame" style leaderboard for the hand-placed Champion NPC.
  *
  * Note on method names: this project has no ForgeGradle/MCP mapping setup,
  * so it's compiled directly against the server's own SRG-named runtime jar
@@ -51,6 +60,8 @@ public class FactionBuffMod {
             Paths.get("/home/hyunho/player-status-api/faction_boosted_players.txt");
     private static final Path PLAYER_FACTIONS_FILE =
             Paths.get("/home/hyunho/player-status-api/player_factions.txt");
+    private static final Path NPC_TRAINER_WINS_FILE =
+            Paths.get("/home/hyunho/player-status-api/npc_trainer_wins.log");
 
     private static final Map<String, String> FACTION_DISPLAY_NAME = new HashMap<>();
     private static final Map<String, TextFormatting> FACTION_COLOR = new HashMap<>();
@@ -109,6 +120,32 @@ public class FactionBuffMod {
         ITextComponent component = prefix.func_230529_a_(body);
 
         event.setComponent(component);
+    }
+
+    @SubscribeEvent
+    public void onNPCBattleEnd(NPCEvent.EndBattle event) {
+        if (event.type != EnumNPCType.Trainer) {
+            return;
+        }
+        if (event.getPlayerResults() != BattleResults.VICTORY) {
+            return;
+        }
+        // func_146103_bH() verified above for onExperienceGain; NPCEntity's
+        // getNickName() is a plain public method, no vanilla name-guessing
+        // involved at all (both are Pixelmon's own first-party API compiled
+        // straight from its jar, not vanilla/SRG internals).
+        String playerName = event.player.func_146103_bH().getName();
+        String npcName = event.npc.getNickName();
+        appendLine(NPC_TRAINER_WINS_FILE, Instant.now() + "|" + playerName + "|" + npcName);
+    }
+
+    private static void appendLine(Path file, String line) {
+        try {
+            Files.write(file, Collections.singletonList(line), java.nio.charset.StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            // best-effort logging only, never worth crashing a battle over
+        }
     }
 
     private float getMultiplier(String playerName) {

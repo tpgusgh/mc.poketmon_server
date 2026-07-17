@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
     modId="factionbuff"
-    version="1.2.1"
+    version="1.2.2"
     displayName="Faction Buff"
     authors="mieung.kr"
     description='''
@@ -14,6 +14,8 @@ license="MIT"
     in that faction's color. Reads per-player data from
     /home/hyunho/player-status-api/faction_boosted_players.txt and
     /home/hyunho/player-status-api/player_factions.txt.
+    Also logs every NPC trainer battle win to npc_trainer_wins.log for the
+    website's Champion Hall of Fame leaderboard.
     '''
 
 [[dependencies.factionbuff]]

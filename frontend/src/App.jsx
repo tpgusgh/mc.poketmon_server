@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import './App.css'
 import BattleSection from './BattleSection'
 import GuideButton from './GuideSection'
+import ChampionSection from './ChampionSection'
 import FactionSection from './FactionSection'
 import { useMe, AuthHeaderWidget } from './Auth'
 import { ContactButton } from './Contact'
@@ -371,6 +372,8 @@ export default function App() {
       <FactionSection />
 
       <BattleSection me={me} checked={checked} />
+
+      <ChampionSection />
 
       {story && story.length > 0 && (() => {
         const filteredDays = [...story].reverse().filter((day) => selectedDate === 'all' || day.date === selectedDate)

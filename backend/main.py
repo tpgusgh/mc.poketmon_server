@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import auth
 import backups
 import battles
+import champion_wins
 import contact
 import factions
 import journal_tracker
@@ -41,6 +42,7 @@ app.include_router(battles.router)
 app.include_router(factions.router)
 app.include_router(contact.router)
 app.include_router(backups.router)
+app.include_router(champion_wins.router)
 
 PLAYTIME_STATE_FILE = Path(__file__).parent / "playtime_state.json"
 
