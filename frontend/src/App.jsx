@@ -6,7 +6,7 @@ import ChampionSection from './ChampionSection'
 import FactionSection from './FactionSection'
 import { useMe, AuthHeaderWidget } from './Auth'
 import { ContactButton } from './Contact'
-import AdminPanelButton from './AdminPanel'
+import AdminPanelButton, { AdminInboxButton } from './AdminPanel'
 
 const API_URL = 'https://players.mieung.kr/players'
 const LEADERBOARD_URL = 'https://players.mieung.kr/leaderboard'
@@ -246,6 +246,7 @@ export default function App() {
           </button>
           <GuideButton />
           <ContactButton me={me} />
+          <AdminInboxButton me={me} />
           <AdminPanelButton me={me} />
           <AuthHeaderWidget me={me} checked={checked} refreshMe={refreshMe} />
         </div>

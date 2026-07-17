@@ -18,6 +18,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, Cookie, HTTPException, Response
 
+import rcon
+
 router = APIRouter()
 
 ADMIN_UUID = "3bbd52c7-65d2-43f7-8d61-344607722b25"  # kimhyunhoking, per ops.json
@@ -48,6 +50,10 @@ USERCACHE_FILES = [
     Path("/home/hyunho/mcserver/usercache.json"),
     Path("/home/hyunho/mcserver2/usercache.json"),
 ]
+
+# Bans only apply to the live server (mcserver) -- RCON isn't enabled on the
+# mcserver2 staging box, and there's no reason to ban anyone there anyway.
+BANNED_PLAYERS_FILE = Path("/home/hyunho/mcserver/banned-players.json")
 
 
 def _load_json(path: Path, default):
@@ -530,3 +536,71 @@ def admin_resolve_dispute(payload: dict, session: str | None = Cookie(default=No
     dispute["resolved_at"] = time.time()
     _save_disputes(disputes)
     return dispute
+
+
+def _sanitize_reason(reason: str) -> str:
+    """Strip control characters (newlines etc.) so a ban reason can't be
+    used to smuggle extra lines into the RCON command string."""
+    return "".join(ch for ch in reason if ch.isprintable()).strip()[:100]
+
+
+@router.get("/admin/banned-players")
+def admin_banned_players(session: str | None = Cookie(default=None)):
+    """Every known player, flagged with their current ban entry (if any).
+    Bans only apply to the live server -- see BANNED_PLAYERS_FILE."""
+    _require_admin(session)
+    banned = _load_json(BANNED_PLAYERS_FILE, [])
+    banned_by_uuid = {b["uuid"]: b for b in banned if b.get("uuid")}
+
+    all_players = _all_known_players()
+    players = [
+        {
+            "uuid": uuid,
+            "name": name,
+            "banned": uuid in banned_by_uuid,
+            "reason": banned_by_uuid.get(uuid, {}).get("reason"),
+        }
+        for uuid, name in all_players.items()
+    ]
+    players.sort(key=lambda p: p["name"].lower())
+    return {"players": players}
+
+
+@router.post("/admin/ban")
+def admin_ban_player(payload: dict, session: str | None = Cookie(default=None)):
+    _require_admin(session)
+    player_uuid = payload.get("player_uuid")
+    reason = _sanitize_reason(payload.get("reason") or "")
+
+    all_players = _all_known_players()
+    name = all_players.get(player_uuid)
+    if not name:
+        raise HTTPException(400, "존재하지 않는 플레이어입니다")
+    if player_uuid == ADMIN_UUID:
+        raise HTTPException(400, "관리자 계정은 밴할 수 없습니다")
+
+    command = f"ban {name} {reason}".strip()
+    try:
+        rcon.rcon_command(command)
+    except (ConnectionError, OSError, PermissionError) as e:
+        raise HTTPException(502, f"서버에 밴 명령을 전달하지 못했습니다: {e}")
+
+    return {"uuid": player_uuid, "name": name, "banned": True}
+
+
+@router.post("/admin/unban")
+def admin_unban_player(payload: dict, session: str | None = Cookie(default=None)):
+    _require_admin(session)
+    player_uuid = payload.get("player_uuid")
+
+    all_players = _all_known_players()
+    name = all_players.get(player_uuid)
+    if not name:
+        raise HTTPException(400, "존재하지 않는 플레이어입니다")
+
+    try:
+        rcon.rcon_command(f"pardon {name}")
+    except (ConnectionError, OSError, PermissionError) as e:
+        raise HTTPException(502, f"서버에 밴 해제 명령을 전달하지 못했습니다: {e}")
+
+    return {"uuid": player_uuid, "name": name, "banned": False}

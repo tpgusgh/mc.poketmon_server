@@ -118,23 +118,70 @@ function AdminForceFaction({ players, onChange }) {
   )
 }
 
-export default function AdminPanelButton({ me }) {
+function AdminBans({ players, onBan, onUnban }) {
+  const [reasons, setReasons] = useState({})
+
+  if (players.length === 0) return null
+
+  return (
+    <div className="battle-block admin-block">
+      <h3>⛔ 플레이어 밴 관리</h3>
+      <ul className="battle-list">
+        {players.map((p) => (
+          <li key={p.uuid} className="battle-row battle-row-col">
+            <span>
+              <strong>{p.name}</strong>
+              {p.banned && (
+                <span className="faction-badge" style={{ '--faction-color': '#dc2626', marginLeft: 8 }}>
+                  밴됨{p.reason ? ` (${p.reason})` : ''}
+                </span>
+              )}
+            </span>
+            <div className="battle-actions">
+              {p.banned ? (
+                <button className="btn btn-secondary" onClick={() => onUnban(p.uuid)}>
+                  밴 해제
+                </button>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    className="date-select"
+                    placeholder="사유 (선택)"
+                    value={reasons[p.uuid] ?? ''}
+                    onChange={(e) => setReasons((r) => ({ ...r, [p.uuid]: e.target.value }))}
+                  />
+                  <button className="btn btn-secondary" onClick={() => onBan(p.uuid, reasons[p.uuid] ?? '')}>
+                    밴
+                  </button>
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** Things that need an admin decision: battle disputes, account-claim
+ * disputes, and player inquiries -- kept separate from the general admin
+ * toolkit below so they're quick to check without wading through
+ * announce/backup/faction tools. */
+export function AdminInboxButton({ me }) {
   const [open, setOpen] = useState(false)
   const [disputes, setDisputes] = useState([])
   const [accountDisputes, setAccountDisputes] = useState([])
-  const [factionPlayers, setFactionPlayers] = useState([])
   const [error, setError] = useState(null)
 
   const load = useCallback(async () => {
     try {
-      const [disputesRes, accountDisputesRes, factionPlayersRes] = await Promise.all([
+      const [disputesRes, accountDisputesRes] = await Promise.all([
         apiGet('/admin/disputes'),
         apiGet('/admin/account-disputes'),
-        apiGet('/admin/players-factions'),
       ])
       if (disputesRes.ok) setDisputes((await disputesRes.json()).disputes)
       if (accountDisputesRes.ok) setAccountDisputes((await accountDisputesRes.json()).disputes)
-      if (factionPlayersRes.ok) setFactionPlayers((await factionPlayersRes.json()).players)
     } catch (e) {
       setError(e.message)
     }
@@ -172,8 +219,86 @@ export default function AdminPanelButton({ me }) {
   const handleAdminResolveAccountDispute = (disputeId, action) =>
     runAction(() => apiPost('/admin/account-disputes/resolve', { dispute_id: disputeId, action }))
 
+  if (!me?.is_admin) return null
+
+  return (
+    <>
+      <button className="btn btn-secondary" onClick={() => setOpen(true)}>
+        📋 처리함
+      </button>
+      {open && (
+        <div className="guide-modal-overlay" onClick={() => setOpen(false)}>
+          <div className="guide-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="guide-modal-head">
+              <h2>📋 관리자 처리함</h2>
+              <button className="btn btn-secondary" onClick={() => setOpen(false)}>
+                닫기
+              </button>
+            </div>
+            {error && <div className="error-banner">{error}</div>}
+            <AdminDisputes disputes={disputes} onResolve={handleAdminResolve} />
+            <AdminAccountDisputes disputes={accountDisputes} onResolve={handleAdminResolveAccountDispute} />
+            <AdminInquiries />
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+export default function AdminPanelButton({ me }) {
+  const [open, setOpen] = useState(false)
+  const [factionPlayers, setFactionPlayers] = useState([])
+  const [bannablePlayers, setBannablePlayers] = useState([])
+  const [error, setError] = useState(null)
+
+  const load = useCallback(async () => {
+    try {
+      const [factionPlayersRes, bannedRes] = await Promise.all([
+        apiGet('/admin/players-factions'),
+        apiGet('/admin/banned-players'),
+      ])
+      if (factionPlayersRes.ok) setFactionPlayers((await factionPlayersRes.json()).players)
+      if (bannedRes.ok) setBannablePlayers((await bannedRes.json()).players)
+    } catch (e) {
+      setError(e.message)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    load()
+    const id = setInterval(load, REFRESH_MS)
+    return () => clearInterval(id)
+  }, [open, load])
+
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open])
+
+  const runAction = async (fn) => {
+    try {
+      await fn()
+      setError(null)
+      await load()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   const handleForceFaction = (playerUuid, faction) =>
     runAction(() => apiPost('/admin/set-player-faction', { player_uuid: playerUuid, faction }))
+
+  const handleBan = (playerUuid, reason) =>
+    runAction(() => apiPost('/admin/ban', { player_uuid: playerUuid, reason }))
+
+  const handleUnban = (playerUuid) =>
+    runAction(() => apiPost('/admin/unban', { player_uuid: playerUuid }))
 
   if (!me?.is_admin) return null
 
@@ -192,11 +317,9 @@ export default function AdminPanelButton({ me }) {
               </button>
             </div>
             {error && <div className="error-banner">{error}</div>}
-            <AdminDisputes disputes={disputes} onResolve={handleAdminResolve} />
-            <AdminAccountDisputes disputes={accountDisputes} onResolve={handleAdminResolveAccountDispute} />
             <AdminForceFaction players={factionPlayers} onChange={handleForceFaction} />
+            <AdminBans players={bannablePlayers} onBan={handleBan} onUnban={handleUnban} />
             <AdminAnnounce />
-            <AdminInquiries />
             <AdminPlayerdataBackups />
           </div>
         </div>
